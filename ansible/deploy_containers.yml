@@ -1,0 +1,152 @@
+---
+- name: Configure Frontend (Vote + Result)
+  hosts: frontend
+  become: yes
+  tasks:
+    - name: Update apt package index
+      ansible.builtin.apt:
+        update_cache: yes
+
+    - name: Install Docker if not present
+      ansible.builtin.package:
+        name: docker.io
+        state: present
+
+    - name: Remove old Vote container
+      docker_container:
+        name: voting-app
+        state: absent
+
+    - name: Pull Vote Docker Image
+      docker_image:
+        name: hamnairfan96/voting-app
+        source: pull
+        tag: latest
+
+    - name: Run Vote Container
+      docker_container:
+        name: voting-app
+        image: hamnairfan96/voting-app:latest
+        ports:
+          - "5000:80"
+        env:
+          REDIS_HOST: "10.0.2.219"
+        state: started
+
+    - name: Remove old Result container
+      docker_container:
+        name: result-app
+        state: absent
+
+    - name: Pull Result Docker Image
+      docker_image:
+        name: hamnairfan96/result-app
+        source: pull
+        tag: latest
+
+    - name: Run Result Container
+      docker_container:
+        name: result-app
+        image: hamnairfan96/result-app:latest
+        ports:
+          - "5001:80"
+        env:
+          PG_HOST: "10.0.2.93"
+          PG_USER: "postgres"
+          PG_PASSWORD: "postgres"
+          PG_DATABASE: "postgres"
+        state: started
+
+- name: Configure Backend (Redis + Worker)
+  hosts: backend
+  become: yes
+  tasks:
+    - name: Update apt package index
+      ansible.builtin.apt:
+        update_cache: yes
+
+    - name: Install Docker if not present
+      ansible.builtin.package:
+        name: docker.io
+        state: present
+
+    - name: Create Docker network for backend
+      docker_network:
+        name: backend-net
+        state: present
+
+    - name: Remove old Redis container
+      docker_container:
+        name: redis
+        state: absent
+
+    - name: Pull Redis Docker Image
+      docker_image:
+        name: redis
+        source: pull
+        tag: latest
+
+    - name: Run Redis Container
+      docker_container:
+        name: redis
+        image: redis:latest
+        networks:
+          - name: backend-net
+        ports:
+          - "6379:6379"
+        state: started
+
+    - name: Remove old Worker container
+      docker_container:
+        name: worker-app
+        state: absent
+
+    - name: Pull Worker Docker Image
+      docker_image:
+        name: hamnairfan96/worker-app
+        source: pull
+        tag: latest
+
+    - name: Run Worker Container
+      docker_container:
+        name: worker-app
+        image: hamnairfan96/worker-app:latest
+        networks:
+          - name: backend-net
+        env:
+          REDIS_HOST: "redis"
+          DB_HOST: "10.0.2.93"
+          DB_USERNAME: "postgres"
+          DB_PASSWORD: "postgres"
+          DB_NAME: "postgres"
+        state: started
+
+- name: Configure Database (Postgres)
+  hosts: database
+  become: yes
+  tasks:
+    - name: Update apt package index
+      ansible.builtin.apt:
+        update_cache: yes
+
+    - name: Install Docker if not present
+      ansible.builtin.package:
+        name: docker.io
+        state: present
+
+    - name: Pull Postgres Docker Image
+      docker_image:
+        name: postgres
+        source: pull
+        tag: latest
+
+    - name: Run Postgres Container
+      docker_container:
+        name: db
+        image: postgres:latest
+        ports:
+          - "5432:5432"
+        env:
+          POSTGRES_USER: "postgres"
+          POSTGRES_PASSWORD: "postgres"
+        state: started
