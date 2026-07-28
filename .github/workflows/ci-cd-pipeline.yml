@@ -75,9 +75,9 @@ jobs:
       - name: Create/update db-credentials Secret
         run: |
           kubectl create secret generic db-credentials \
-            --from-literal=POSTGRES_USER=${{ secrets.DB_USER }} \
-            --from-literal=POSTGRES_PASSWORD=${{ secrets.DB_PASSWORD }} \
-            --from-literal=POSTGRES_DB=${{ secrets.DB_NAME }} \
+            --from-literal=POSTGRES_USER="${{ secrets.DB_USER }}" \
+            --from-literal=POSTGRES_PASSWORD="${{ secrets.DB_PASSWORD }}" \
+            --from-literal=POSTGRES_DB="${{ secrets.DB_NAME }}" \
             --dry-run=client -o yaml | kubectl apply -f -
 
       - name: Apply Kubernetes manifests
