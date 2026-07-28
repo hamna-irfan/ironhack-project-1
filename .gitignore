@@ -17,3 +17,4 @@ terraform.rc
 
 # OS files
 .DS_Store
+k8s/secrets.yaml
